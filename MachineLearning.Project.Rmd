@@ -1,0 +1,119 @@
+---
+title: "Machine Learning Project"
+author: "DD"
+date: "February 27, 2016"
+output: html_document
+---
+
+The goal of this project is to predict the manner in which we do the exercise. The data is from various senssors such as accelerometers on the belt, forearm, arm, and dumbell of 6 research study participants. The  "classe" variable in the training set is the way to classify how effective it is. After building the model it will be tested i.e. used to predict agaist twenty usecases which is provided as the test data.
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. They are very generous in allowing their data to be used for various analysis.
+
+The training data : https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data : https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+Loading libraries
+```{r, warning=FALSE,message=FALSE}
+library(caret)
+library(randomForest)
+library(corrplot)
+library(rpart)
+library(gdata)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+```
+
+Loading data
+
+```{r, echo=FALSE}
+
+  traindata = read.csv("pml-training.csv",header=TRUE, na.strings=c("NA","#DIV/0!",""))
+  testdata = read.csv("pml-testing.csv",header=TRUE, na.strings=c("NA","#DIV/0!",""))
+  
+  
+  
+```
+
+
+Data processing for training set
+  * Columns contains NA are already removed
+  * Values with zero need to skipped.
+  * Non predictor columns need to be removed.
+
+```{r, echo=FALSE}
+  #non predictor related first five variables removed
+  traindata<- traindata[,-(1:5)]
+  testdata<- testdata[,-(1:5)]
+  
+  nzv<- nearZeroVar(traindata)
+  traindata<- traindata[,-nzv]
+  
+  nzv<- nearZeroVar(testdata)
+  testdata<- testdata[,-nzv]
+
+  NAfilter <- apply(traindata,2,function(x){sum(is.na(x) )})
+  traindata <-traindata[,which(NAfilter ==0)]
+
+  
+  NAfilter <- apply(testdata,2,function(x){sum(is.na(x) )})
+  testdata <-testdata[,which(NAfilter ==0)]
+
+```
+Craete two groups with 65% of the training data sub training and 35% of training to sub test data
+
+```{r, echo=FALSE}
+set.seed(23345)
+
+subset <- createDataPartition(y=traindata$classe, p=0.65, list=FALSE)
+subsettrain <- traindata[subset, ]
+subsettest <- traindata[-subset, ]
+  
+```
+  
+Decision Tree of the Machine language Algorithm
+  
+```{r, echo=FALSE}
+
+modFitSet1 <- rpart(classe ~ ., data=subsettrain, method="class")
+fancyRpartPlot(modFitSet1)
+
+```
+
+
+```{r, echo=TRUE}
+predictionsSet1 <- predict(modFitSet1, subsettrain, type = "class")
+confusionMatrix(predictionsSet1, subsettrain$classe)
+
+```
+
+
+Random Forest Tree Machine language Algorithm
+  
+```{r, echo=FALSE}
+
+modelRF <- randomForest(classe ~. , data=subsettrain)
+predictionsRF <- predict(modelRF, subsettrain, type = "class")
+confusionMatrix(predictionsRF, subsettrain$classe)
+
+```
+
+Evaluation of subset of training test data, lets go with "RF" since it has good accuracy.
+```{r, echo=FALSE}
+
+predictionsRF <- predict(modelRF, subsettest, type = "class")
+confusionMatrix(predictionsRF, subsettest$classe)
+
+
+```
+
+Lets predict the category of the test data using the Random Forest model we built.
+
+```{r, echo=FALSE}
+
+predictionsResult <- predict(modelRF, testdata, type = "class")
+print(predictionsResult)
+```
+
+
